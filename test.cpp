@@ -25,6 +25,15 @@ void printVectorObjects(std::vector<ObjectUnion>& v) {
 
 int main(){
 
+  // テストとして以下の様なものが揃えられれば良さそう
+  // vectorが
+  //   1. 空のときのPack, UnPack
+  //   2. 1要素のとき
+  //   3. N要素のとき
+  // unionが
+  //   1. 空のとき
+  //   2. N要素のとき
+
   auto sampleRootT = SampleRootT();
 
   {

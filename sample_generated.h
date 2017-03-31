@@ -429,24 +429,16 @@ CreateSampleRoot(flatbuffers::FlatBufferBuilder &_fbb, const SampleRootT *_o,
 
   // no use `_rehasher`
 
-  std::cout << "TEST BEGIN: SIZE = " << _o->objects_type.size() << "\n";
-  for (int i=0; i<_o->objects_type.size(); ++i) {
-    std::cout << _o->objects_type[i] << std::endl;
-  }
-  std::cout << "TEST END\n";
-
-
   flatbuffers::Offset<flatbuffers::Vector<sample::Object> > _objects_type =
       _o->objects_type.size()
           ? _fbb.CreateVector((const Object *)_o->objects_type.data(),
                               _o->objects_type.size())
           : 0; // Vectorが空のときOffsetに0を突っ込むのはsecure?
 
-  std::cout << _o->objects_type.size() << std::endl;
-
   // std::cout << "CreateSampleRoot:: ENUM: " << _objects_type << "\n";
   // std::vector<unsigned char*>  _objects; _objects.resize(_o->objects.size());
   std::vector<flatbuffers::Offset<void>> _objects;
+//   std::transform(_o->_objects.begin(), _o->_objects.end(), _o->_objects.begin(), std::back_inserter(_objects)); // lambdaでPack必要
   _objects.resize(_o->objects.size());
   for (auto _i = 0; _i < _objects.size(); ++_i) {
     _objects[_i] = _o->objects[_i].Pack(_fbb);
