@@ -1121,11 +1121,7 @@ FLATBUFFERS_FINAL_CLASS
   /// buffer as a `vector`.
   /// @return Returns a typed `Offset` into the serialized data indicating
   /// where the vector is stored.
-
-  // deprecatedのアトリビュートをつけると、Tの型が簡単にわかる
-  template<typename T> [[deprecated]] Offset<Vector<T>> CreateVector(const std::vector<T> &v) {
-    std::cout << typeid(v).name() << std::endl;
-    std::cout << "std::vector<Offset<T>> -> Offset<Vector<Offset<T>>>\n";
+  template<typename T> Offset<Vector<T>> CreateVector(const std::vector<T> &v) {
     return CreateVector(data(v), v.size());
   }
 

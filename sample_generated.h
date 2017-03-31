@@ -294,11 +294,24 @@ struct SampleRootBuilder {
   }
   SampleRootBuilder(flatbuffers::FlatBufferBuilder &_fbb)
         : fbb_(_fbb) {
+
+    // StartTable()
+    // vector_downward buf; の現在位置をGetSize()により取得し、開始地点とする
+    // StartTable()を機に階層が上昇するので、その階層のserialized object(table: schema)のbuilderのnestedにチェックを入れる
     start_ = fbb_.StartTable();
   }
   SampleRootBuilder &operator=(const SampleRootBuilder &);
+
+  // Finish()は型を運び、現在位置に印をつける(ホンマか？)
   flatbuffers::Offset<SampleRoot> Finish() {
+    // EndTableがやれること
+    // This finishes one serialized object by generating the vtable if it's a
+    // table, comparing it against existing vtables, and writing the
+    // resulting vtable offset.
     const auto end = fbb_.EndTable(start_, 2);
+
+    // Offset化 := SampleRootのserialized objectの型と最終位置を保存する
+    // Offset化は各serialized objectに対応するBuilderのFinish()によって行われる
     auto o = flatbuffers::Offset<SampleRoot>(end);
     return o;
   }
@@ -387,7 +400,18 @@ inline SampleRootT *SampleRoot::UnPack(const flatbuffers::resolver_function_t *_
   UnPackTo(_o, _resolver);
   return _o;
 }
+/*
+template<typename UnionT> Offset<void> CreateObjectUnion(const UnionT& _o) {
+  
+}
 
+template<typename UnionT> Offset<Vector<Offset<void>>> CreateVectorOfObjectUnions(
+  const std::vector<UnionT> &v) {
+  std::vector<Offset<void>> offsets(v.size());
+  for (size_t i = 0; i < v.size(); i++) offsets[i] = CreateObjectUnion(v[i]);
+  return flatbuffers::CreateVector<Offset<void>>(offsets);
+}
+*/
 inline void
 SampleRoot::UnPackTo(SampleRootT *_o,
                      const flatbuffers::resolver_function_t *_resolver) const {
@@ -424,12 +448,10 @@ inline flatbuffers::Offset<SampleRoot> SampleRoot::Pack(flatbuffers::FlatBufferB
 inline flatbuffers::Offset<SampleRoot>
 CreateSampleRoot(flatbuffers::FlatBufferBuilder &_fbb, const SampleRootT *_o,
                  const flatbuffers::rehasher_function_t *_rehasher) {
-  (void)_rehasher;
+  (void)_rehasher; // Not used `_rehasher`
   (void)_o;
 
-  // no use `_rehasher`
-
-  flatbuffers::Offset<flatbuffers::Vector<sample::Object> > _objects_type =
+  flatbuffers::Offset<flatbuffers::Vector<sample::Object>> _objects_type =
       _o->objects_type.size()
           ? _fbb.CreateVector((const Object *)_o->objects_type.data(),
                               _o->objects_type.size())
@@ -438,16 +460,35 @@ CreateSampleRoot(flatbuffers::FlatBufferBuilder &_fbb, const SampleRootT *_o,
   // std::cout << "CreateSampleRoot:: ENUM: " << _objects_type << "\n";
   // std::vector<unsigned char*>  _objects; _objects.resize(_o->objects.size());
   std::vector<flatbuffers::Offset<void>> _objects;
-//   std::transform(_o->_objects.begin(), _o->_objects.end(), _o->_objects.begin(), std::back_inserter(_objects)); // lambdaでPack必要
   _objects.resize(_o->objects.size());
   for (auto _i = 0; _i < _objects.size(); ++_i) {
     _objects[_i] = _o->objects[_i].Pack(_fbb);
   }
   // auto _objects = _o->objects.size() ? _fbb.CreateVector((const unsigned
   // char*)_o->objects.data(), _o->objects.size()) : 0;
-  return sample::CreateSampleRoot(
-      _fbb, _objects_type,
-      _fbb.CreateVector<flatbuffers::Offset<void>>(_objects));
+
+  // UnPack化したあとのものを復元するには、バイト列から読み取り直さないといけない
+  // auto v = _fbb.CreateVector(_objects); // flatbuffers::VectorのUnPack化
+
+  // CreateVectorによって
+  // std::vector<T> -> Offset<flatbuffers::Vector<Offset<T>>
+  // が可能
+
+  // CreateVector<Primitive>は配列のポインタを渡せばいい感じになる
+  // ただしCreateVector<bool>は特殊化されている
+
+  // CreateVector<Object>は、ObjectがOffset化されている必要がある
+  // 例えばCreateVector<Offset<String>>などとなる
+
+  // これを簡単にするためにCreateVectorOfStringsなど、
+  // std::vector<std::string> -> Offset<Vector<Offset<String>>>
+  // に変換するものも用意されている
+  // 他にはCreateVectorOfStructsもある
+
+  // CreateVectorOfUnionsを生成しても良いかもしれない
+
+  return sample::CreateSampleRoot(_fbb, _objects_type,
+                                  _fbb.CreateVector(_objects));
 }
 
 inline bool VerifyObject(flatbuffers::Verifier &verifier, const void *obj, Object type) {
@@ -480,12 +521,11 @@ inline bool VerifyObjectVector(flatbuffers::Verifier &verifier, const flatbuffer
 
 inline flatbuffers::NativeTable *ObjectUnion::UnPack(const void *obj, Object type, const flatbuffers::resolver_function_t *resolver) {
   // ObjectUnionのUnPackはHogeT型のUnionの実体になるNativeTableを生成する
-  // そのため、enumで指定された型にswitchで分岐させ、適切なHogeT型にUnPack()による生成を委譲する。
+  // そのため、enumで指定された型にswitchで分岐させ、Offset<void>から適切なHogeT型の生成(UnPack())を委譲する。
   switch (type) {
     case Object_Object1: {
       auto ptr = reinterpret_cast<const Object1 *>(obj);
-      // return nullptrにしたらLEAKが起こらない。ObjectUnionのReset()によって、tableがdeleteされようとしても、delete nullptrは実害なし。
-      return ptr->UnPack(resolver);// LEAK OCCURS.
+      return ptr->UnPack(resolver);
     }
     case Object_Object2: {
       auto ptr = reinterpret_cast<const Object2 *>(obj);
