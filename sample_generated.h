@@ -83,9 +83,6 @@ struct ObjectUnion {
   flatbuffers::Offset<void> Pack(flatbuffers::FlatBufferBuilder &_fbb, const flatbuffers::rehasher_function_t *_rehasher = nullptr) const;
 
   Object1T *AsObject1() {
-
-    std::cout << "AsObject1() :: type = " << type << std::endl;
-
     return type == Object_Object1 ?
       reinterpret_cast<Object1T *>(table) : nullptr;
   }
