@@ -28,21 +28,17 @@ int main(){
   buffer.assign(ptr, ptr + fbb.GetSize());
   SampleRoot const* rsmpl = GetSampleRoot(reinterpret_cast<const uint8_t*>(buffer.data()));
 
-  delete rsmpl->UnPack();
-//  std::unique_ptr<SampleRootT> smplrtTPtr(rsmpl->UnPack());
+  std::cout << "UNPACK BEGIN\n";
+  std::unique_ptr<SampleRootT> smplrtTPtr(rsmpl->UnPack());
 
-//  std::cout << "size = " << smplrtTPtr->objects.size() << "\n";
-//  smplrtTPtr->objects[0];
+  std::cout << "size = " << smplrtTPtr->objects.size() << "\n";
 
-  // Packに失敗しているか、キャストの型がおかしいか
-  // Packはサイズは可能か？実体が不可？
-  // PackはEnumは可能か？
-  // NativeTableはHogeT型にキャストされる
-//  std::cout << reinterpret_cast<Object1T *>(smplrtTPtr->objects[0].table)->text << std::endl; // !!! LEAK OCCURRS HERE !!!
-//  smplrtTPtr->objects[0].AsObject1(); // !!! LEAK OCCURRS HERE !!!
-//  smplrtTPtr->objects[0].AsObject1()->text;
-//  smplrtTPtr->objects[0].AsObject1()->boolean;
-//  std::cout << smplrtTPtr->objects[0].AsObject1()->text << ", " << smplrtTPtr->objects[0].AsObject1()->boolean << std::endl;
+  std::cout << reinterpret_cast<Object1T *>(smplrtTPtr->objects[0].table)->text << std::endl;
+  std::cout << smplrtTPtr->objects[0].AsObject1()->text << ", " << smplrtTPtr->objects[0].AsObject1()->boolean << std::endl;
 
+  // "LET'S DELETE ObjectUnion!" が2回呼ばれる理由
+  // 1. sampleRootT.objects[0] (<- moved from objectUnion) が呼ばれている
+  // 2. smplrtTPtr.objects[0]
+  
   return 0;
 }

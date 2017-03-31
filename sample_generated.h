@@ -397,32 +397,22 @@ SampleRoot::UnPackTo(SampleRootT *_o,
   (void)_o;
   (void)_resolver;
 
-  std::cout << "OPKKKKKKKKKKK\n";
   {
-    auto _e = objects_type();  // const flatbuffers::Vector<uint8_t>*
-    std::cout << "OBJTYPE?\n";
+    auto _e = objects_type();
     if (_e) {
-      std::cout << "INNNNNNNNNN11111111\n";
-      _o->objects_type.resize(_e->size());
       for (flatbuffers::uoffset_t _i = 0; _i < _e->size(); _i++) {
-        _o->objects_type[_i] = static_cast<Object>(_e->Get(_i));
-        std::cout << "ENUM: " << EnumNameObject(static_cast<Object>(_e->Get(_i))) << std::endl;
+        _o->objects_type.emplace_back(static_cast<Object>(_e->Get(_i)));
       }
     }
   };
 
   {
     auto _e = objects();
-    std::cout << "OBJ?\n";
     if (_e) {
-      std::cout << "INNNNNNNNNN2222222222\n";
-      _o->objects.resize(_e->size());
-
+      _o->objects.resize(_o->objects_type.size());
       for (flatbuffers::uoffset_t _i = 0; _i < _e->size(); _i++) {
-        std::cout << "ENEN = " << static_cast<Object>(objects_type()->Get(_i)) << "\n";
-      }
-      for (flatbuffers::uoffset_t _i = 0; _i < _e->size(); _i++) {
-        _o->objects[_i].table = ObjectUnion::UnPack(  // LEAK OCCURS HERE
+        _o->objects[_i].type = static_cast<Object>(objects_type()->Get(_i));
+        _o->objects[_i].table = ObjectUnion::UnPack(
             _e->Get(_i), static_cast<Object>(objects_type()->Get(_i)),
             _resolver);
       }
@@ -453,7 +443,7 @@ CreateSampleRoot(flatbuffers::FlatBufferBuilder &_fbb, const SampleRootT *_o,
       _o->objects_type.size()
           ? _fbb.CreateVector((const Object *)_o->objects_type.data(),
                               _o->objects_type.size())
-          : 0; // HOGEEEEEEEEEEEEEEEE
+          : 0; // Vectorが空のときOffsetに0を突っ込むのはsecure?
 
   std::cout << _o->objects_type.size() << std::endl;
 
@@ -505,7 +495,8 @@ inline flatbuffers::NativeTable *ObjectUnion::UnPack(const void *obj, Object typ
   switch (type) {
     case Object_Object1: {
       auto ptr = reinterpret_cast<const Object1 *>(obj);
-      return ptr->UnPack(resolver);// LEAK OCCURS. If use `return nullptr;`, leak doesn't occur.
+      // return nullptrにしたらLEAKが起こらない。ObjectUnionのReset()によって、tableがdeleteされようとしても、delete nullptrは実害なし。
+      return ptr->UnPack(resolver);// LEAK OCCURS.
     }
     case Object_Object2: {
       auto ptr = reinterpret_cast<const Object2 *>(obj);
@@ -519,6 +510,8 @@ inline flatbuffers::Offset<void> ObjectUnion::Pack(flatbuffers::FlatBufferBuilde
   switch (type) {
     case Object_Object1: {
       auto ptr = reinterpret_cast<const Object1T *>(table);
+      // unionは静的な型情報を消す。型はenumで管理される。
+      // HogeT型の内容をHoge型のOffsetに変換する。CreateHogeを通じてHogeBuilderを介して生成される。
       return CreateObject1(_fbb, ptr, _rehasher).Union();
     }
     case Object_Object2: {
@@ -532,6 +525,7 @@ inline flatbuffers::Offset<void> ObjectUnion::Pack(flatbuffers::FlatBufferBuilde
 inline void ObjectUnion::Reset() {
   switch (type) {
     case Object_Object1: {
+      std::cout << "LET'S DELETE ObjectUnion!\n";
       auto ptr = reinterpret_cast<Object1T *>(table);
       delete ptr;
       break;
