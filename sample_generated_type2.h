@@ -79,18 +79,14 @@ struct ObjectUnion {
     }
   }
 
-  // (NativeTable*, type) <-> (void*, type) <-> (Offset<void>, type)
-  // NativeTable*はObjectUnion*ではなく、enum値を切り分けていることに注意
-
-  // 元の実装だと、enum値が切り分けられていたり、わけられていなかったりした。
-  // void*やNativeTable*は型チェックが出来ないので単にSegmentationfaultとなっていた。
+  // (ObjectUnion*, type) <-> (Offset<void*>, type)
 
   // UnPack()はObjectUnionを復元する
-  static flatbuffers::NativeTable *UnPack(const void *obj, Object type, const flatbuffers::resolver_function_t *resolver);
-
-  // Pack()はOffset化する
+ //  static flatbuffers::NativeTable *UnPack(const void *obj, Object type, const flatbuffers::resolver_function_t *resolver);
+  static ObjectUnion *UnPack(const void *obj, Object type, const flatbuffers::resolver_function_t *resolver);
   flatbuffers::Offset<void> Pack(flatbuffers::FlatBufferBuilder &_fbb, const flatbuffers::rehasher_function_t *_rehasher = nullptr) const;
-
+  // Pack()はOffset化する
+  
   Object1T *AsObject1() {
     return type == Object_Object1 ?
       reinterpret_cast<Object1T *>(table) : nullptr;
@@ -260,7 +256,7 @@ flatbuffers::Offset<Object2> CreateObject2(flatbuffers::FlatBufferBuilder &_fbb,
 
 struct SampleRootT : public flatbuffers::NativeTable {
   typedef SampleRoot TableType;
-//  std::vector<Object> objects_type; // これが余計。Offset化した時だけ、enumとunionが分離する。HogeT化したら結合する。
+  std::vector<Object> objects_type;
   std::vector<ObjectUnion> objects;
   SampleRootT() {
   }
@@ -331,11 +327,8 @@ inline flatbuffers::Offset<SampleRoot> CreateSampleRoot(
     flatbuffers::Offset<flatbuffers::Vector<Object>> objects_type = 0,
     flatbuffers::Offset<flatbuffers::Vector<flatbuffers::Offset<void>>> objects = 0) {
   SampleRootBuilder builder_(_fbb);
-
-  // 一旦、この中やCreateVectorは間違いがないと仮定する
   builder_.add_objects(objects);
   builder_.add_objects_type(objects_type);
-
   return builder_.Finish();
 }
 
@@ -430,7 +423,6 @@ SampleRoot::UnPackTo(SampleRootT *_o,
   (void)_o;
   (void)_resolver;
 
-  /*
   {
     auto _e = objects_type();
     if (_e) {
@@ -439,22 +431,19 @@ SampleRoot::UnPackTo(SampleRootT *_o,
       }
     }
   };
-  */
 
-  // SampleRoot::UnPackTo()は、enumのVectorとvoid*のVectorから std::vector<ObjectUnion>を生成する
+  // SampleRoot::UnPack() では enumとNativeTableをUnPackしている
+  // Pack()とUnPack()はちょうど対の動作をする必要がある
   {
-    auto _e = objects(); // enumと分離しているOffset化されたvoid*のVector
+    auto _e = objects();
     if (_e) {
-      std::cout << "happy\n";
-      _o->objects.resize(_e->size());
+      _o->objects.resize(_o->objects_type.size());
       for (flatbuffers::uoffset_t _i = 0; _i < _e->size(); _i++) {
-        std::cout << objects_type()->Get(_i) << ", "; // これが正しく表示されない場合、Pack()に失敗していることになる。
         _o->objects[_i].type = static_cast<Object>(objects_type()->Get(_i));
-        _o->objects[_i].table = ObjectUnion::UnPack(
+        _o->objects[_i] = ObjectUnion::UnPack(
             _e->Get(_i), static_cast<Object>(objects_type()->Get(_i)),
             _resolver);
       }
-      puts("");
     }
   };
 }
@@ -469,34 +458,16 @@ CreateSampleRoot(flatbuffers::FlatBufferBuilder &_fbb, const SampleRootT *_o,
   (void)_rehasher; // Not used `_rehasher`
   (void)_o;
 
-  std::vector<Object> _objects_type(_o->objects.size());
-  for (auto _i = 0; _i < _o->objects.size(); ++_i) {
-    _objects_type[_i] = _o->objects[_i].type;
+  std::vector<Object> _objects_type(_o->objects_type.size());
+  for (auto _i = 0; _i < _o->objects_type.size(); ++_i) {
+    _objects_type[_i] = _o->objects_type[_i];
   }
-/*
-  // Verified
-  std::cout << "CreateSampleRoot(fbb, o, rehasher)\n";
-  for (int i=0; i<_objects_type.size(); ++i) {
-    std::cout << _objects_type[i] << ", ";
-  }puts("");
-*/
 
-  std::vector<flatbuffers::Offset<void>> _objects(_o->objects.size());  // enum値は含まれていない
+  // Pack()はenumとNativeTableを同時にPackすることを想定している
+  std::vector<flatbuffers::Offset<void>> _objects(_o->objects.size());
   for (auto _i = 0; _i < _objects.size(); ++_i) {
-    _objects[_i] = _o->objects[_i].Pack(_fbb); // (NativeTable*, type) -> void* (except type) の切り出しのPack()
+    _objects[_i] = _o->objects[_i].Pack(_fbb);
   }
-/*
-Offset化した後なので復元はだるい
-  for (int i=0; i<_objects_type.size(); ++i) {
-    ObjectUnion::UnPack(
-            _e->Get(_i), static_cast<Object>(_objects_type[i]),
-            _resolver);
-    std::cout <<  _objects_type[i] << ", ";
-  }puts("");
-*/
-  // 調べるべきは ObjectUnion::Pack()とCreateSampleRoot()
-
-
   // auto _objects = _o->objects.size() ? _fbb.CreateVector((const unsigned
   // char*)_o->objects.data(), _o->objects.size()) : 0;
 
@@ -520,7 +491,8 @@ Offset化した後なので復元はだるい
 
   // CreateVectorOfUnionsを生成しても良いかもしれない
 
-  return sample::CreateSampleRoot(_fbb, _fbb.CreateVector(_objects_type), _fbb.CreateVector(_objects));
+  return sample::CreateSampleRoot(_fbb, _fbb.CreateVector(_objects_type),
+                                  _fbb.CreateVector(_objects));
 }
 
 inline bool VerifyObject(flatbuffers::Verifier &verifier, const void *obj, Object type) {
@@ -554,7 +526,6 @@ inline bool VerifyObjectVector(flatbuffers::Verifier &verifier, const flatbuffer
 inline flatbuffers::NativeTable *ObjectUnion::UnPack(const void *obj, Object type, const flatbuffers::resolver_function_t *resolver) {
   // ObjectUnionのUnPackはHogeT型のUnionの実体になるNativeTableを生成する
   // そのため、enumで指定された型にswitchで分岐させ、Offset<void>から適切なHogeT型の生成(UnPack())を委譲する。
-  // 引数の void* には、NativeTable*に対応する実体だけが含まれていて、enum値は含まれていないことに注意する。
   switch (type) {
     case Object_Object1: {
       auto ptr = reinterpret_cast<const Object1 *>(obj);
@@ -568,13 +539,16 @@ inline flatbuffers::NativeTable *ObjectUnion::UnPack(const void *obj, Object typ
   }
 }
 
-inline flatbuffers::Offset<void> ObjectUnion::Pack(flatbuffers::FlatBufferBuilder &_fbb, const flatbuffers::rehasher_function_t *_rehasher) const {
-  // メンバ変数の(NativeTable*k, type) から Offset<void> を生成する。
-  // Offset<void>にenum値は含まれていないことに注意する。
+inline flatbuffers::Offset<void> ObjectUnion::Pack(flatbuffers::FlatBufferBuilder &_fbb, Object type, const flatbuffers::rehasher_function_t *_rehasher) const {
   switch (type) {
     case Object_Object1: {
       auto ptr = reinterpret_cast<const Object1T *>(table);
-      return CreateObject1(_fbb, ptr, _rehasher).Union();
+      // unionは静的な型情報を消す。型はenumで管理される。
+      // HogeT型の内容をHoge型のOffsetに変換する。CreateHogeを通じてHogeBuilderを介して生成される。
+      auto u = new ObjectUnion();
+      u->type = Object_Object1;
+      u->table = CreateObject1(_fbb, ptr, _rehasher).Union();
+      return u;
     }
     case Object_Object2: {
       auto ptr = reinterpret_cast<const Object2T *>(table);
