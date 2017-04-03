@@ -465,52 +465,99 @@ inline flatbuffers::Offset<SampleRoot> SampleRoot::Pack(flatbuffers::FlatBufferB
 }
 
 // WORKING
-template<typename T>
-flatbuffers::Offset<flatbuffers::Vector<T>> CreateVectorOfUnions(
-  flatbuffers::FlatBufferBuilder &_fbb,
+Offset<Vector<T>> CreateVectorOfUnions(
+  const std::vector<void *> &v,
   const std::vector<Object> &e,
-  const std::vector<flatbuffers::NativeTable *> &v,
-  const flatbuffers::rehasher_function_t *_rehasher) {
-  std::vector<flatbuffers::Offset<void>> offsets(v.size());
-  for (auto i = 0; i < v.size(); ++i) {
-    switch (e[i]) {
-      case Object_Object1: {
-        auto ptr = reinterpret_cast<const Object1T *>(v[i]);
-        offsets[i] = CreateObject1(_fbb, ptr, _rehasher).Union();
-      }
-      case Object_Object2: {
-        auto ptr = reinterpret_cast<const Object2T *>(v[i]);
-        offsets[i] = CreateObject2(_fbb, ptr, _rehasher).Union();
-      }
-      default: return 0;
-    }
+  const size_t len) {
+  std::vector<Offset<void>> offsets(v.size());
+  for (size_t i = 0; i < v.size(); i++) {
+    offsets[i] = v[i].Pack(_fbb); // ObjectUnion(NativeTable*, type) -> void* (except type) の切り出しのPack()
   }
-  //  template<typename T> Offset<Vector<T>> CreateVector(const std::vector<T> &v) {
-  return _fbb.CreateVector(offsets);
+  return CreateVector(offsets);
 }
 
 inline flatbuffers::Offset<SampleRoot>
 CreateSampleRoot(flatbuffers::FlatBufferBuilder &_fbb, const SampleRootT *_o,
                  const flatbuffers::rehasher_function_t *_rehasher) {
-  /*
-  このコードはなんの意味があるんだ
   (void)_rehasher; // Not used `_rehasher`
   (void)_o;
-  */
+
+/*
 
   std::vector<Object> _objects_type(_o->objects.size());
-  for (auto _i = 0; _i < _objects_type.size(); ++_i) {
+  for (auto _i = 0; _i < _o->objects.size(); ++_i) {
     _objects_type[_i] = _o->objects[_i].type;
   }
+  */
+/*
+  // Verified: _objects_typeにはしっかり入る
+  std::cout << "CreateSampleRoot(fbb, o, rehasher)\n";
+  for (int i=0; i<_objects_type.size(); ++i) {
+    std::cout << _objects_type[i] << ", ";
+  }puts("");
+*/
 
-  std::vector<flatbuffers::NativeTable*> _objects_table(_o->objects.size());
-  for (auto _i = 0; _i < _objects_table.size(); ++_i) {
-    _objects_table[_i] = _o->objects[_i].table;
+  // 意味的には{Object1, Object2}のunionをPackしてOffset<void>化したものが含まれている
+//  std::vector<flatbuffers::Offset<void>> _objects(_o->objects.size());  // enum値は含まれていない
+
+  // std::vector内部のOffset<>化を外して見る提案???
+  //
+  // 1. std::vector<ObjectUnion>からstd::vector<Object>とstd::vector<Offset<void>>を生成
+  // 2. std::vector<Object>とstd::vector<NativeTable*>から、std::vector<Offset<void>>を生成
+  // 2が良い
+
+  std::vector<NativeTable*> _objects_table(_o->objects.size());
+  for (auto _i = 0; _i < _objects.size(); ++_i) {
+    _objects_table[_i] = _o->objects[_i].table
+//    std::cout << "UNION PACK????\n";
+//    _objects[_i] = _o->objects[_i].Pack(_fbb); // ObjectUnion(NativeTable*, type) -> void* (except type) の切り出しのPack()
   }
 
-  return sample::CreateSampleRoot(
-    _fbb, _fbb.CreateVector(_objects_type),
-    CreateVectorOfUnions<flatbuffers::Offset<void>>(_fbb, _objects_type, _objects_table, _rehasher));
+/*
+Offset化した後なので復元はだるい
+  for (int i=0; i<_objects_type.size(); ++i) {
+    ObjectUnion::UnPack(
+            _e->Get(_i), static_cast<Object>(_objects_type[i]),
+            _resolver);
+    std::cout <<  _objects_type[i] << ", ";
+  }puts("");
+*/
+  // 調べるべきは ObjectUnion::Pack()とCreateSampleRoot()
+
+
+  // auto _objects = _o->objects.size() ? _fbb.CreateVector((const unsigned
+  // char*)_o->objects.data(), _o->objects.size()) : 0;
+
+  // UnPack化したあとのものを復元するには、バイト列から読み取り直さないといけない
+  // auto v = _fbb.CreateVector(_objects); // flatbuffers::VectorのUnPack化
+
+  // CreateVectorによって
+  // std::vector<T> -> Offset<flatbuffers::Vector<Offset<T>>
+  // が可能
+
+  // CreateVector<Primitive>は配列のポインタを渡せばいい感じになる
+  // ただしCreateVector<bool>は特殊化されている
+
+  // CreateVector<Object>は、ObjectがOffset化されている必要がある
+  // 例えばCreateVector<Offset<String>>などとなる
+
+  // これを簡単にするためにCreateVectorOfStringsなど、
+  // std::vector<std::string> -> Offset<Vector<Offset<String>>>
+  // に変換するものも用意されている
+  // 他にはCreateVectorOfStructsもある
+
+  // CreateVectorOfUnionsを生成しても良いかもしれない <- それはそう体操が踊れる(なぜなら型がわからないから)
+
+  //
+  //
+  // CreateVector()はstd::vector<Offset<void>>に対応していない可能性が微粒子レベルで存在している
+  // 
+
+  auto kkk = _fbb.CreateVector(_objects);
+
+  std::cout << "KOKOK\n";
+
+  return sample::CreateSampleRoot(_fbb, _fbb.CreateVector(_objects_type), kkk);//
 }
 
 inline bool VerifyObject(flatbuffers::Verifier &verifier, const void *obj, Object type) {

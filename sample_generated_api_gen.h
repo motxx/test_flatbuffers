@@ -430,16 +430,16 @@ SampleRoot::UnPackTo(SampleRootT *_o,
   (void)_o;
   (void)_resolver;
 
-  // これは本質的にいらない
-  std::vector<Object> _obj_type;
+  /*
   {
     auto _e = objects_type();
     if (_e) {
       for (flatbuffers::uoffset_t _i = 0; _i < _e->size(); _i++) {
-        _obj_type.emplace_back(static_cast<Object>(_e->Get(_i)));
+        _o->objects_type.emplace_back(static_cast<Object>(_e->Get(_i)));
       }
     }
   };
+  */
 
   // SampleRoot::UnPackTo()は、enumのVectorとvoid*のVectorから std::vector<ObjectUnion>を生成する
   {
@@ -448,8 +448,7 @@ SampleRoot::UnPackTo(SampleRootT *_o,
       std::cout << "happy\n";
       _o->objects.resize(_e->size());
       for (flatbuffers::uoffset_t _i = 0; _i < _e->size(); _i++) {
-//        std::cout << objects_type()->Get(_i) << ", "; // same as below
-        std::cout << _obj_type[_i] << ", "; // これが正しく表示されない場合、Pack()に失敗していることになる。
+        std::cout << objects_type()->Get(_i) << ", "; // これが正しく表示されない場合、Pack()に失敗していることになる。
         _o->objects[_i].type = static_cast<Object>(objects_type()->Get(_i));
         _o->objects[_i].table = ObjectUnion::UnPack(
             _e->Get(_i), static_cast<Object>(objects_type()->Get(_i)),
@@ -464,53 +463,64 @@ inline flatbuffers::Offset<SampleRoot> SampleRoot::Pack(flatbuffers::FlatBufferB
   return CreateSampleRoot(_fbb, _o, _rehasher);
 }
 
-// WORKING
-template<typename T>
-flatbuffers::Offset<flatbuffers::Vector<T>> CreateVectorOfUnions(
-  flatbuffers::FlatBufferBuilder &_fbb,
-  const std::vector<Object> &e,
-  const std::vector<flatbuffers::NativeTable *> &v,
-  const flatbuffers::rehasher_function_t *_rehasher) {
-  std::vector<flatbuffers::Offset<void>> offsets(v.size());
-  for (auto i = 0; i < v.size(); ++i) {
-    switch (e[i]) {
-      case Object_Object1: {
-        auto ptr = reinterpret_cast<const Object1T *>(v[i]);
-        offsets[i] = CreateObject1(_fbb, ptr, _rehasher).Union();
-      }
-      case Object_Object2: {
-        auto ptr = reinterpret_cast<const Object2T *>(v[i]);
-        offsets[i] = CreateObject2(_fbb, ptr, _rehasher).Union();
-      }
-      default: return 0;
-    }
-  }
-  //  template<typename T> Offset<Vector<T>> CreateVector(const std::vector<T> &v) {
-  return _fbb.CreateVector(offsets);
-}
-
 inline flatbuffers::Offset<SampleRoot>
 CreateSampleRoot(flatbuffers::FlatBufferBuilder &_fbb, const SampleRootT *_o,
                  const flatbuffers::rehasher_function_t *_rehasher) {
-  /*
-  このコードはなんの意味があるんだ
   (void)_rehasher; // Not used `_rehasher`
   (void)_o;
-  */
 
   std::vector<Object> _objects_type(_o->objects.size());
-  for (auto _i = 0; _i < _objects_type.size(); ++_i) {
+  for (auto _i = 0; _i < _o->objects.size(); ++_i) {
     _objects_type[_i] = _o->objects[_i].type;
   }
+/*
+  // Verified
+  std::cout << "CreateSampleRoot(fbb, o, rehasher)\n";
+  for (int i=0; i<_objects_type.size(); ++i) {
+    std::cout << _objects_type[i] << ", ";
+  }puts("");
+*/
 
-  std::vector<flatbuffers::NativeTable*> _objects_table(_o->objects.size());
-  for (auto _i = 0; _i < _objects_table.size(); ++_i) {
-    _objects_table[_i] = _o->objects[_i].table;
+  std::vector<flatbuffers::Offset<void>> _objects(_o->objects.size());  // enum値は含まれていない
+  for (auto _i = 0; _i < _objects.size(); ++_i) {
+    _objects[_i] = _o->objects[_i].Pack(_fbb); // (NativeTable*, type) -> void* (except type) の切り出しのPack()
   }
+/*
+Offset化した後なので復元はだるい
+  for (int i=0; i<_objects_type.size(); ++i) {
+    ObjectUnion::UnPack(
+            _e->Get(_i), static_cast<Object>(_objects_type[i]),
+            _resolver);
+    std::cout <<  _objects_type[i] << ", ";
+  }puts("");
+*/
+  // 調べるべきは ObjectUnion::Pack()とCreateSampleRoot()
 
-  return sample::CreateSampleRoot(
-    _fbb, _fbb.CreateVector(_objects_type),
-    CreateVectorOfUnions<flatbuffers::Offset<void>>(_fbb, _objects_type, _objects_table, _rehasher));
+
+  // auto _objects = _o->objects.size() ? _fbb.CreateVector((const unsigned
+  // char*)_o->objects.data(), _o->objects.size()) : 0;
+
+  // UnPack化したあとのものを復元するには、バイト列から読み取り直さないといけない
+  // auto v = _fbb.CreateVector(_objects); // flatbuffers::VectorのUnPack化
+
+  // CreateVectorによって
+  // std::vector<T> -> Offset<flatbuffers::Vector<Offset<T>>
+  // が可能
+
+  // CreateVector<Primitive>は配列のポインタを渡せばいい感じになる
+  // ただしCreateVector<bool>は特殊化されている
+
+  // CreateVector<Object>は、ObjectがOffset化されている必要がある
+  // 例えばCreateVector<Offset<String>>などとなる
+
+  // これを簡単にするためにCreateVectorOfStringsなど、
+  // std::vector<std::string> -> Offset<Vector<Offset<String>>>
+  // に変換するものも用意されている
+  // 他にはCreateVectorOfStructsもある
+
+  // CreateVectorOfUnionsを生成しても良いかもしれない
+
+  return sample::CreateSampleRoot(_fbb, _fbb.CreateVector(_objects_type), _fbb.CreateVector(_objects));
 }
 
 inline bool VerifyObject(flatbuffers::Verifier &verifier, const void *obj, Object type) {
@@ -559,11 +569,8 @@ inline flatbuffers::NativeTable *ObjectUnion::UnPack(const void *obj, Object typ
 }
 
 inline flatbuffers::Offset<void> ObjectUnion::Pack(flatbuffers::FlatBufferBuilder &_fbb, const flatbuffers::rehasher_function_t *_rehasher) const {
-  // メンバ変数の(NativeTable*, type) から Offset<void> を生成する。
-  // Offset<void>にenum値は含まれていないことに注意する。void*は{Object1, Object2}のunionとなる。
-
-  std::cout << "UNION PACK\n";
-
+  // メンバ変数の(NativeTable*k, type) から Offset<void> を生成する。
+  // Offset<void>にenum値は含まれていないことに注意する。
   switch (type) {
     case Object_Object1: {
       auto ptr = reinterpret_cast<const Object1T *>(table);

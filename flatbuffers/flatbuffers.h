@@ -1104,6 +1104,7 @@ FLATBUFFERS_FINAL_CLASS
   /// @return Returns a typed `Offset` into the serialized data indicating
   /// where the vector is stored.
   template<typename T> Offset<Vector<T>> CreateVector(const T *v, size_t len) {
+    std::cout << "MOSHIKASHITE DAKEDO~~~\n";
     StartVector(len, sizeof(T));
     if (sizeof(T) == 1) {
       PushBytes(reinterpret_cast<const uint8_t *>(v), len);
