@@ -125,7 +125,9 @@ inline flatbuffers::Offset<Object1> CreateObject1Direct(
 struct Object2 FLATBUFFERS_FINAL_CLASS : private flatbuffers::Table {
   enum {
     VT_TEXT = 4,
-    VT_INTEGER = 6
+    VT_INTEGER = 6,
+    VT_INT2 = 8,
+    VT_INT3 = 10
   };
   const flatbuffers::String *text() const {
     return GetPointer<const flatbuffers::String *>(VT_TEXT);
@@ -133,11 +135,19 @@ struct Object2 FLATBUFFERS_FINAL_CLASS : private flatbuffers::Table {
   int32_t integer() const {
     return GetField<int32_t>(VT_INTEGER, 0);
   }
+  int32_t int2() const {
+    return GetField<int32_t>(VT_INT2, 0);
+  }
+  int32_t int3() const {
+    return GetField<int32_t>(VT_INT3, 0);
+  }
   bool Verify(flatbuffers::Verifier &verifier) const {
     return VerifyTableStart(verifier) &&
            VerifyFieldRequired<flatbuffers::uoffset_t>(verifier, VT_TEXT) &&
            verifier.Verify(text()) &&
            VerifyField<int32_t>(verifier, VT_INTEGER) &&
+           VerifyField<int32_t>(verifier, VT_INT2) &&
+           VerifyField<int32_t>(verifier, VT_INT3) &&
            verifier.EndTable();
   }
 };
@@ -151,13 +161,19 @@ struct Object2Builder {
   void add_integer(int32_t integer) {
     fbb_.AddElement<int32_t>(Object2::VT_INTEGER, integer, 0);
   }
+  void add_int2(int32_t int2) {
+    fbb_.AddElement<int32_t>(Object2::VT_INT2, int2, 0);
+  }
+  void add_int3(int32_t int3) {
+    fbb_.AddElement<int32_t>(Object2::VT_INT3, int3, 0);
+  }
   Object2Builder(flatbuffers::FlatBufferBuilder &_fbb)
         : fbb_(_fbb) {
     start_ = fbb_.StartTable();
   }
   Object2Builder &operator=(const Object2Builder &);
   flatbuffers::Offset<Object2> Finish() {
-    const auto end = fbb_.EndTable(start_, 2);
+    const auto end = fbb_.EndTable(start_, 4);
     auto o = flatbuffers::Offset<Object2>(end);
     fbb_.Required(o, Object2::VT_TEXT);
     return o;
@@ -167,8 +183,12 @@ struct Object2Builder {
 inline flatbuffers::Offset<Object2> CreateObject2(
     flatbuffers::FlatBufferBuilder &_fbb,
     flatbuffers::Offset<flatbuffers::String> text = 0,
-    int32_t integer = 0) {
+    int32_t integer = 0,
+    int32_t int2 = 0,
+    int32_t int3 = 0) {
   Object2Builder builder_(_fbb);
+  builder_.add_int3(int3);
+  builder_.add_int2(int2);
   builder_.add_integer(integer);
   builder_.add_text(text);
   return builder_.Finish();
@@ -177,11 +197,15 @@ inline flatbuffers::Offset<Object2> CreateObject2(
 inline flatbuffers::Offset<Object2> CreateObject2Direct(
     flatbuffers::FlatBufferBuilder &_fbb,
     const char *text = nullptr,
-    int32_t integer = 0) {
+    int32_t integer = 0,
+    int32_t int2 = 0,
+    int32_t int3 = 0) {
   return sample::CreateObject2(
       _fbb,
       text ? _fbb.CreateString(text) : 0,
-      integer);
+      integer,
+      int2,
+      int3);
 }
 
 struct Object3 FLATBUFFERS_FINAL_CLASS : private flatbuffers::Table {

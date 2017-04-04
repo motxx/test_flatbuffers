@@ -9,6 +9,8 @@ table Object1{
 table Object2{
   text: string (required);
   integer: int;
+  int2: int;
+  int3: int;
 }
 table Object3{
   text: string (required);

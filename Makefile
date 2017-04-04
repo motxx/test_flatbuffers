@@ -6,7 +6,7 @@ sample_generated.h:
 	flatc --cpp --grpc sample.fbs
 
 flatbuf_test: sample_generated.h
-	g++ -std=c++14 -Wl,-no-as-needed $(INCS) test.cpp -o $@
+	g++ -std=c++1y -Wl,-no-as-needed $(INCS) test.cpp -o $@
 
 .PHONY: clean
 clean:
