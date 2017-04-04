@@ -1,0 +1,72 @@
+g++ -std=c++1y -Wl,-no-as-needed  test.cpp -o flatbuf_test
+In file included from /usr/include/x86_64-linux-gnu/c++/5/bits/c++allocator.h:33:0,
+                 from /usr/include/c++/5/bits/allocator.h:46,
+                 from /usr/include/c++/5/string:41,
+                 from /usr/local/include/flatbuffers/flatbuffers.h:28,
+                 from sample_generated.h:7,
+                 from iroha_flatbuf.hpp:4,
+                 from test.cpp:2:
+/usr/include/c++/5/ext/new_allocator.h: In instantiation of 'void __gnu_cxx::new_allocator<_Tp>::construct(_Up*, _Args&& ...) [with _Up = IrohaFlatbuf::OffsetUnion; _Args = {flatbuffers::Offset<sample::Object1>}; _Tp = IrohaFlatbuf::OffsetUnion]':
+/usr/include/c++/5/bits/alloc_traits.h:530:4:   required from 'static void std::allocator_traits<std::allocator<_CharT> >::construct(std::allocator_traits<std::allocator<_CharT> >::allocator_type&, _Up*, _Args&& ...) [with _Up = IrohaFlatbuf::OffsetUnion; _Args = {flatbuffers::Offset<sample::Object1>}; _Tp = IrohaFlatbuf::OffsetUnion; std::allocator_traits<std::allocator<_CharT> >::allocator_type = std::allocator<IrohaFlatbuf::OffsetUnion>]'
+/usr/include/c++/5/bits/vector.tcc:96:30:   required from 'void std::vector<_Tp, _Alloc>::emplace_back(_Args&& ...) [with _Args = {flatbuffers::Offset<sample::Object1>}; _Tp = IrohaFlatbuf::OffsetUnion; _Alloc = std::allocator<IrohaFlatbuf::OffsetUnion>]'
+test.cpp:19:83:   required from here
+/usr/include/c++/5/ext/new_allocator.h:120:4: error: no matching function for call to 'IrohaFlatbuf::OffsetUnion::OffsetUnion(flatbuffers::Offset<sample::Object1>)'
+  { ::new((void *)__p) _Up(std::forward<_Args>(__args)...); }
+    ^
+In file included from test.cpp:2:0:
+iroha_flatbuf.hpp:9:8: note: candidate: IrohaFlatbuf::OffsetUnion::OffsetUnion()
+ struct OffsetUnion {
+        ^
+iroha_flatbuf.hpp:9:8: note:   candidate expects 0 arguments, 1 provided
+iroha_flatbuf.hpp:9:8: note: candidate: constexpr IrohaFlatbuf::OffsetUnion::OffsetUnion(const IrohaFlatbuf::OffsetUnion&)
+iroha_flatbuf.hpp:9:8: note:   no known conversion for argument 1 from 'flatbuffers::Offset<sample::Object1>' to 'const IrohaFlatbuf::OffsetUnion&'
+iroha_flatbuf.hpp:9:8: note: candidate: constexpr IrohaFlatbuf::OffsetUnion::OffsetUnion(IrohaFlatbuf::OffsetUnion&&)
+iroha_flatbuf.hpp:9:8: note:   no known conversion for argument 1 from 'flatbuffers::Offset<sample::Object1>' to 'IrohaFlatbuf::OffsetUnion&&'
+In file included from /usr/include/x86_64-linux-gnu/c++/5/bits/c++allocator.h:33:0,
+                 from /usr/include/c++/5/bits/allocator.h:46,
+                 from /usr/include/c++/5/string:41,
+                 from /usr/local/include/flatbuffers/flatbuffers.h:28,
+                 from sample_generated.h:7,
+                 from iroha_flatbuf.hpp:4,
+                 from test.cpp:2:
+/usr/include/c++/5/ext/new_allocator.h: In instantiation of 'void __gnu_cxx::new_allocator<_Tp>::construct(_Up*, _Args&& ...) [with _Up = IrohaFlatbuf::OffsetUnion; _Args = {flatbuffers::Offset<sample::Object2>}; _Tp = IrohaFlatbuf::OffsetUnion]':
+/usr/include/c++/5/bits/alloc_traits.h:530:4:   required from 'static void std::allocator_traits<std::allocator<_CharT> >::construct(std::allocator_traits<std::allocator<_CharT> >::allocator_type&, _Up*, _Args&& ...) [with _Up = IrohaFlatbuf::OffsetUnion; _Args = {flatbuffers::Offset<sample::Object2>}; _Tp = IrohaFlatbuf::OffsetUnion; std::allocator_traits<std::allocator<_CharT> >::allocator_type = std::allocator<IrohaFlatbuf::OffsetUnion>]'
+/usr/include/c++/5/bits/vector.tcc:96:30:   required from 'void std::vector<_Tp, _Alloc>::emplace_back(_Args&& ...) [with _Args = {flatbuffers::Offset<sample::Object2>}; _Tp = IrohaFlatbuf::OffsetUnion; _Alloc = std::allocator<IrohaFlatbuf::OffsetUnion>]'
+test.cpp:20:83:   required from here
+/usr/include/c++/5/ext/new_allocator.h:120:4: error: no matching function for call to 'IrohaFlatbuf::OffsetUnion::OffsetUnion(flatbuffers::Offset<sample::Object2>)'
+  { ::new((void *)__p) _Up(std::forward<_Args>(__args)...); }
+    ^
+In file included from test.cpp:2:0:
+iroha_flatbuf.hpp:9:8: note: candidate: IrohaFlatbuf::OffsetUnion::OffsetUnion()
+ struct OffsetUnion {
+        ^
+iroha_flatbuf.hpp:9:8: note:   candidate expects 0 arguments, 1 provided
+iroha_flatbuf.hpp:9:8: note: candidate: constexpr IrohaFlatbuf::OffsetUnion::OffsetUnion(const IrohaFlatbuf::OffsetUnion&)
+iroha_flatbuf.hpp:9:8: note:   no known conversion for argument 1 from 'flatbuffers::Offset<sample::Object2>' to 'const IrohaFlatbuf::OffsetUnion&'
+iroha_flatbuf.hpp:9:8: note: candidate: constexpr IrohaFlatbuf::OffsetUnion::OffsetUnion(IrohaFlatbuf::OffsetUnion&&)
+iroha_flatbuf.hpp:9:8: note:   no known conversion for argument 1 from 'flatbuffers::Offset<sample::Object2>' to 'IrohaFlatbuf::OffsetUnion&&'
+In file included from /usr/include/x86_64-linux-gnu/c++/5/bits/c++allocator.h:33:0,
+                 from /usr/include/c++/5/bits/allocator.h:46,
+                 from /usr/include/c++/5/string:41,
+                 from /usr/local/include/flatbuffers/flatbuffers.h:28,
+                 from sample_generated.h:7,
+                 from iroha_flatbuf.hpp:4,
+                 from test.cpp:2:
+/usr/include/c++/5/ext/new_allocator.h: In instantiation of 'void __gnu_cxx::new_allocator<_Tp>::construct(_Up*, _Args&& ...) [with _Up = IrohaFlatbuf::OffsetUnion; _Args = {flatbuffers::Offset<sample::Object3>}; _Tp = IrohaFlatbuf::OffsetUnion]':
+/usr/include/c++/5/bits/alloc_traits.h:530:4:   required from 'static void std::allocator_traits<std::allocator<_CharT> >::construct(std::allocator_traits<std::allocator<_CharT> >::allocator_type&, _Up*, _Args&& ...) [with _Up = IrohaFlatbuf::OffsetUnion; _Args = {flatbuffers::Offset<sample::Object3>}; _Tp = IrohaFlatbuf::OffsetUnion; std::allocator_traits<std::allocator<_CharT> >::allocator_type = std::allocator<IrohaFlatbuf::OffsetUnion>]'
+/usr/include/c++/5/bits/vector.tcc:96:30:   required from 'void std::vector<_Tp, _Alloc>::emplace_back(_Args&& ...) [with _Args = {flatbuffers::Offset<sample::Object3>}; _Tp = IrohaFlatbuf::OffsetUnion; _Alloc = std::allocator<IrohaFlatbuf::OffsetUnion>]'
+test.cpp:21:82:   required from here
+/usr/include/c++/5/ext/new_allocator.h:120:4: error: no matching function for call to 'IrohaFlatbuf::OffsetUnion::OffsetUnion(flatbuffers::Offset<sample::Object3>)'
+  { ::new((void *)__p) _Up(std::forward<_Args>(__args)...); }
+    ^
+In file included from test.cpp:2:0:
+iroha_flatbuf.hpp:9:8: note: candidate: IrohaFlatbuf::OffsetUnion::OffsetUnion()
+ struct OffsetUnion {
+        ^
+iroha_flatbuf.hpp:9:8: note:   candidate expects 0 arguments, 1 provided
+iroha_flatbuf.hpp:9:8: note: candidate: constexpr IrohaFlatbuf::OffsetUnion::OffsetUnion(const IrohaFlatbuf::OffsetUnion&)
+iroha_flatbuf.hpp:9:8: note:   no known conversion for argument 1 from 'flatbuffers::Offset<sample::Object3>' to 'const IrohaFlatbuf::OffsetUnion&'
+iroha_flatbuf.hpp:9:8: note: candidate: constexpr IrohaFlatbuf::OffsetUnion::OffsetUnion(IrohaFlatbuf::OffsetUnion&&)
+iroha_flatbuf.hpp:9:8: note:   no known conversion for argument 1 from 'flatbuffers::Offset<sample::Object3>' to 'IrohaFlatbuf::OffsetUnion&&'
+Makefile:9: recipe for target 'flatbuf_test' failed
+make: *** [flatbuf_test] Error 1
